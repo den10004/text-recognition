@@ -1,5 +1,3 @@
-<!--
-
 <!DOCTYPE html>
 <html lang="ru">
   <head>
@@ -30,195 +28,14 @@
       button:hover {
         background-color: #45a049;
       }
-      #output {
-        margin-top: 20px;
-        padding: 10px;
-        background-color: white;
-        border-radius: 5px;
-        width: 80%;
-        max-width: 600px;
-        min-height: 100px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      #copyBtn {
+        background-color: #2196f3;
       }
-    </style>
-  </head>
-  <body>
-    <h1>Распознавание русской речи</h1>
-    <button id="startBtn">Начать распознавание</button>
-    <button id="stopBtn" style="display: none">Остановить распознавание</button>
-    <div id="output">Результат будет здесь...</div>
-
-    <script>
-      const startBtn = document.getElementById("startBtn");
-      const stopBtn = document.getElementById("stopBtn");
-      const output = document.getElementById("output");
-      let recognition;
-      let isRecognizing = false;
-      let restartAttempts = 0;
-      const maxRestartAttempts = 10; // Максимум попыток перезапуска
-      let restartDelay = 5000; // Начальная задержка (5 секунды)
-
-      // Проверяем поддержку Web Speech API
-      if (
-        "webkitSpeechRecognition" in window ||
-        "SpeechRecognition" in window
-      ) {
-        recognition = new (window.SpeechRecognition ||
-          window.webkitSpeechRecognition)();
-        recognition.lang = "ru-RU"; // Устанавливаем русский язык
-        recognition.interimResults = true; // Показывать промежуточные результаты
-        recognition.continuous = true; // Непрерывное распознавание
-
-        recognition.onresult = (event) => {
-          let transcript = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript + " ";
-          }
-          output.textContent = transcript || "Говорите, я слушаю...";
-          restartAttempts = 0; // Сбрасываем счетчик попыток
-          restartDelay = 3000; // Сбрасываем задержку
-          console.log("Распознано:", transcript);
-        };
-
-        recognition.onerror = (event) => {
-          console.error("Ошибка:", event.error);
-          if (event.error === "network") {
-            output.textContent = "Ошибка сети. Пытаюсь переподключиться...";
-            if (isRecognizing && restartAttempts < maxRestartAttempts) {
-              restartAttempts++;
-              // Проверяем состояние сети
-              if (navigator.onLine) {
-                setTimeout(() => {
-                  if (isRecognizing) {
-                    try {
-                      recognition.start();
-                    } catch (e) {
-                      console.error("Ошибка при перезапуске:", e);
-                    }
-                  }
-                }, restartDelay);
-                // Увеличиваем задержку для следующей попытки
-                restartDelay = Math.min(restartDelay * 2, 10000); // Максимум 10 секунд
-              } else {
-                output.textContent = "Отсутствует интернет-соединение.";
-                stopRecognition();
-              }
-            } else {
-              output.textContent =
-                "Слишком много ошибок сети. Пожалуйста, проверьте подключение и попробуйте снова.";
-              stopRecognition();
-            }
-          } else if (event.error !== "aborted") {
-            output.textContent = `Ошибка распознавания: ${event.error}`;
-            if (isRecognizing) {
-              setTimeout(() => {
-                if (isRecognizing) recognition.start();
-              }, restartDelay);
-            }
-          }
-        };
-
-        recognition.onend = () => {
-          console.log("Распознавание завершено, isRecognizing:", isRecognizing);
-          if (isRecognizing && restartAttempts < maxRestartAttempts) {
-            if (navigator.onLine) {
-              setTimeout(() => {
-                if (isRecognizing) {
-                  try {
-                    recognition.start();
-                  } catch (e) {
-                    console.error("Ошибка при перезапуске:", e);
-                  }
-                }
-              }, restartDelay);
-            } else {
-              output.textContent = "Отсутствует интернет-соединение.";
-              stopRecognition();
-            }
-          } else if (isRecognizing) {
-            output.textContent =
-              "Достигнуто максимальное количество попыток. Нажмите 'Начать' снова.";
-            stopRecognition();
-          } else {
-            output.textContent =
-              "Распознавание завершено. Нажмите кнопку, чтобы начать снова.";
-            stopRecognition();
-          }
-        };
-      } else {
-        output.textContent = "Ваш браузер не поддерживает Web Speech API.";
-        startBtn.disabled = true;
+      #copyBtn:hover {
+        background-color: #1e88e5;
       }
-
-      function stopRecognition() {
-        isRecognizing = false;
-        recognition.stop();
-        startBtn.style.display = "block";
-        stopBtn.style.display = "none";
-        restartAttempts = 0;
-        restartDelay = 3000; // Сбрасываем задержку
-        console.log("Распознавание остановлено");
-      }
-
-      startBtn.addEventListener("click", () => {
-        if (recognition && !isRecognizing) {
-          if (navigator.onLine) {
-            isRecognizing = true;
-            restartAttempts = 0;
-            restartDelay = 3000;
-            try {
-              recognition.start();
-              output.textContent = "Говорите, я слушаю...";
-              startBtn.style.display = "none";
-              stopBtn.style.display = "block";
-            } catch (e) {
-              console.error("Ошибка при старте:", e);
-              output.textContent = "Ошибка при запуске распознавания.";
-            }
-          } else {
-            output.textContent = "Отсутствует интернет-соединение.";
-          }
-        }
-      });
-
-      stopBtn.addEventListener("click", () => {
-        if (recognition && isRecognizing) {
-          stopRecognition();
-        }
-      });
-    </script>
-  </body>
-</html>
--->
-<!DOCTYPE html>
-<html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Распознавание русской речи</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100vh;
-        margin: 0;
-        background-color: #f0f0f0;
-      }
-      button {
-        padding: 10px 20px;
-        font-size: 16px;
-        cursor: pointer;
-        background-color: #4caf50;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        margin: 5px;
-      }
-      button:hover {
-        background-color: #45a049;
+      #copyBtn.copied {
+        background-color: #2e7d32;
       }
       #output {
         margin-top: 20px;
@@ -234,14 +51,16 @@
     </style>
   </head>
   <body>
-    <h1>Распознавание русской речи</h1>
+    <h1>Распознавание речи</h1>
     <button id="startBtn">Начать распознавание</button>
     <button id="stopBtn" style="display: none">Остановить распознавание</button>
+    <button id="copyBtn">Копировать текст</button>
     <div id="output">Результат будет здесь...</div>
 
     <script>
       const startBtn = document.getElementById("startBtn");
       const stopBtn = document.getElementById("stopBtn");
+      const copyBtn = document.getElementById("copyBtn");
       const output = document.getElementById("output");
       let recognition;
       let isRecognizing = false;
@@ -361,6 +180,7 @@
       } else {
         output.textContent = "Ваш браузер не поддерживает Web Speech API.";
         startBtn.disabled = true;
+        copyBtn.disabled = true;
       }
 
       function stopRecognition() {
@@ -398,6 +218,56 @@
       stopBtn.addEventListener("click", () => {
         if (recognition && isRecognizing) {
           stopRecognition();
+        }
+      });
+
+      // Обработчик для копирования текста
+      copyBtn.addEventListener("click", () => {
+        const textToCopy = accumulatedText || output.textContent;
+        if (
+          !textToCopy ||
+          textToCopy === "Говорите, я слушаю..." ||
+          textToCopy === "Результат будет здесь..."
+        ) {
+          output.textContent = "Нет текста для копирования.";
+          return;
+        }
+
+        // Используем Clipboard API
+        if (navigator.clipboard) {
+          navigator.clipboard
+            .writeText(textToCopy)
+            .then(() => {
+              copyBtn.textContent = "Скопировано!";
+              copyBtn.classList.add("copied");
+              setTimeout(() => {
+                copyBtn.textContent = "Копировать текст";
+                copyBtn.classList.remove("copied");
+              }, 2000);
+            })
+            .catch((err) => {
+              console.error("Ошибка копирования:", err);
+              output.textContent = "Ошибка при копировании текста.";
+            });
+        } else {
+          // Fallback для старых браузеров
+          const textarea = document.createElement("textarea");
+          textarea.value = textToCopy;
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand("copy");
+            copyBtn.textContent = "Скопировано!";
+            copyBtn.classList.add("copied");
+            setTimeout(() => {
+              copyBtn.textContent = "Копировать текст";
+              copyBtn.classList.remove("copied");
+            }, 2000);
+          } catch (err) {
+            console.error("Ошибка копирования:", err);
+            output.textContent = "Ошибка при копировании текста.";
+          }
+          document.body.removeChild(textarea);
         }
       });
     </script>
