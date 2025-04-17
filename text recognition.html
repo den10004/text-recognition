@@ -1,0 +1,534 @@
+<!--
+
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Распознавание русской речи</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        margin: 5px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #output {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 5px;
+        width: 80%;
+        max-width: 600px;
+        min-height: 100px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Распознавание русской речи</h1>
+    <button id="startBtn">Начать распознавание</button>
+    <button id="stopBtn" style="display: none">Остановить распознавание</button>
+    <div id="output">Результат будет здесь...</div>
+
+    <script>
+      const startBtn = document.getElementById("startBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const output = document.getElementById("output");
+      let recognition;
+      let isRecognizing = false;
+      let restartAttempts = 0;
+      const maxRestartAttempts = 10; // Максимум попыток перезапуска
+      let restartDelay = 5000; // Начальная задержка (5 секунды)
+
+      // Проверяем поддержку Web Speech API
+      if (
+        "webkitSpeechRecognition" in window ||
+        "SpeechRecognition" in window
+      ) {
+        recognition = new (window.SpeechRecognition ||
+          window.webkitSpeechRecognition)();
+        recognition.lang = "ru-RU"; // Устанавливаем русский язык
+        recognition.interimResults = true; // Показывать промежуточные результаты
+        recognition.continuous = true; // Непрерывное распознавание
+
+        recognition.onresult = (event) => {
+          let transcript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript + " ";
+          }
+          output.textContent = transcript || "Говорите, я слушаю...";
+          restartAttempts = 0; // Сбрасываем счетчик попыток
+          restartDelay = 3000; // Сбрасываем задержку
+          console.log("Распознано:", transcript);
+        };
+
+        recognition.onerror = (event) => {
+          console.error("Ошибка:", event.error);
+          if (event.error === "network") {
+            output.textContent = "Ошибка сети. Пытаюсь переподключиться...";
+            if (isRecognizing && restartAttempts < maxRestartAttempts) {
+              restartAttempts++;
+              // Проверяем состояние сети
+              if (navigator.onLine) {
+                setTimeout(() => {
+                  if (isRecognizing) {
+                    try {
+                      recognition.start();
+                    } catch (e) {
+                      console.error("Ошибка при перезапуске:", e);
+                    }
+                  }
+                }, restartDelay);
+                // Увеличиваем задержку для следующей попытки
+                restartDelay = Math.min(restartDelay * 2, 10000); // Максимум 10 секунд
+              } else {
+                output.textContent = "Отсутствует интернет-соединение.";
+                stopRecognition();
+              }
+            } else {
+              output.textContent =
+                "Слишком много ошибок сети. Пожалуйста, проверьте подключение и попробуйте снова.";
+              stopRecognition();
+            }
+          } else if (event.error !== "aborted") {
+            output.textContent = `Ошибка распознавания: ${event.error}`;
+            if (isRecognizing) {
+              setTimeout(() => {
+                if (isRecognizing) recognition.start();
+              }, restartDelay);
+            }
+          }
+        };
+
+        recognition.onend = () => {
+          console.log("Распознавание завершено, isRecognizing:", isRecognizing);
+          if (isRecognizing && restartAttempts < maxRestartAttempts) {
+            if (navigator.onLine) {
+              setTimeout(() => {
+                if (isRecognizing) {
+                  try {
+                    recognition.start();
+                  } catch (e) {
+                    console.error("Ошибка при перезапуске:", e);
+                  }
+                }
+              }, restartDelay);
+            } else {
+              output.textContent = "Отсутствует интернет-соединение.";
+              stopRecognition();
+            }
+          } else if (isRecognizing) {
+            output.textContent =
+              "Достигнуто максимальное количество попыток. Нажмите 'Начать' снова.";
+            stopRecognition();
+          } else {
+            output.textContent =
+              "Распознавание завершено. Нажмите кнопку, чтобы начать снова.";
+            stopRecognition();
+          }
+        };
+      } else {
+        output.textContent = "Ваш браузер не поддерживает Web Speech API.";
+        startBtn.disabled = true;
+      }
+
+      function stopRecognition() {
+        isRecognizing = false;
+        recognition.stop();
+        startBtn.style.display = "block";
+        stopBtn.style.display = "none";
+        restartAttempts = 0;
+        restartDelay = 3000; // Сбрасываем задержку
+        console.log("Распознавание остановлено");
+      }
+
+      startBtn.addEventListener("click", () => {
+        if (recognition && !isRecognizing) {
+          if (navigator.onLine) {
+            isRecognizing = true;
+            restartAttempts = 0;
+            restartDelay = 3000;
+            try {
+              recognition.start();
+              output.textContent = "Говорите, я слушаю...";
+              startBtn.style.display = "none";
+              stopBtn.style.display = "block";
+            } catch (e) {
+              console.error("Ошибка при старте:", e);
+              output.textContent = "Ошибка при запуске распознавания.";
+            }
+          } else {
+            output.textContent = "Отсутствует интернет-соединение.";
+          }
+        }
+      });
+
+      stopBtn.addEventListener("click", () => {
+        if (recognition && isRecognizing) {
+          stopRecognition();
+        }
+      });
+    </script>
+  </body>
+</html>
+-->
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Распознавание русской речи</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        margin: 5px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #output {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 5px;
+        width: 80%;
+        max-width: 600px;
+        min-height: 100px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        overflow-y: auto; /* Прокрутка при большом тексте */
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Распознавание русской речи</h1>
+    <button id="startBtn">Начать распознавание</button>
+    <button id="stopBtn" style="display: none">Остановить распознавание</button>
+    <div id="output">Результат будет здесь...</div>
+
+    <script>
+      const startBtn = document.getElementById("startBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const output = document.getElementById("output");
+      let recognition;
+      let isRecognizing = false;
+      let restartAttempts = 0;
+      const maxRestartAttempts = 5; // Максимум попыток перезапуска
+      let restartDelay = 3000; // Начальная задержка (3 секунды)
+      let accumulatedText = ""; // Накопленный текст
+      let interimText = ""; // Промежуточный текст
+
+      // Проверяем поддержку Web Speech API
+      if (
+        "webkitSpeechRecognition" in window ||
+        "SpeechRecognition" in window
+      ) {
+        recognition = new (window.SpeechRecognition ||
+          window.webkitSpeechRecognition)();
+        recognition.lang = "ru-RU"; // Устанавливаем русский язык
+        recognition.interimResults = true; // Показывать промежуточные результаты
+        recognition.continuous = true; // Непрерывное распознавание
+
+        recognition.onresult = (event) => {
+          interimText = ""; // Очищаем промежуточный текст
+          let finalTranscript = ""; // Финальный текст для этого события
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + " ";
+            } else {
+              interimText += transcript + " ";
+            }
+          }
+
+          // Добавляем только финальный текст к накопленному
+          if (finalTranscript) {
+            accumulatedText += finalTranscript;
+          }
+
+          // Отображаем накопленный текст + промежуточный
+          output.textContent =
+            accumulatedText + interimText || "Говорите, я слушаю...";
+
+          restartAttempts = 0; // Сбрасываем счетчик попыток
+          restartDelay = 3000; // Сбрасываем задержку
+          console.log(
+            "Финальный:",
+            finalTranscript,
+            "Промежуточный:",
+            interimText
+          );
+        };
+
+        recognition.onerror = (event) => {
+          console.error("Ошибка:", event.error);
+          if (event.error === "network") {
+            output.textContent = "Ошибка сети. Пытаюсь переподключиться...";
+            if (isRecognizing && restartAttempts < maxRestartAttempts) {
+              restartAttempts++;
+              if (navigator.onLine) {
+                setTimeout(() => {
+                  if (isRecognizing) {
+                    try {
+                      recognition.start();
+                    } catch (e) {
+                      console.error("Ошибка при перезапуске:", e);
+                    }
+                  }
+                }, restartDelay);
+                restartDelay = Math.min(restartDelay * 2, 10000); // Максимум 10 секунд
+              } else {
+                output.textContent = "Отсутствует интернет-соединение.";
+                stopRecognition();
+              }
+            } else {
+              output.textContent =
+                "Слишком много ошибок сети. Пожалуйста, проверьте подключение и попробуйте снова.";
+              stopRecognition();
+            }
+          } else if (event.error !== "aborted") {
+            output.textContent = `Ошибка распознавания: ${event.error}`;
+            if (isRecognizing) {
+              setTimeout(() => {
+                if (isRecognizing) recognition.start();
+              }, restartDelay);
+            }
+          }
+        };
+
+        recognition.onend = () => {
+          console.log("Распознавание завершено, isRecognizing:", isRecognizing);
+          if (isRecognizing && restartAttempts < maxRestartAttempts) {
+            if (navigator.onLine) {
+              setTimeout(() => {
+                if (isRecognizing) {
+                  try {
+                    recognition.start();
+                  } catch (e) {
+                    console.error("Ошибка при перезапуске:", e);
+                  }
+                }
+              }, restartDelay);
+            } else {
+              output.textContent = "Отсутствует интернет-соединение.";
+              stopRecognition();
+            }
+          } else if (isRecognizing) {
+            output.textContent =
+              "Достигнуто максимальное количество попыток. Нажмите 'Начать' снова.";
+            stopRecognition();
+          } else {
+            output.textContent =
+              accumulatedText ||
+              "Распознавание завершено. Нажмите кнопку, чтобы начать снова.";
+            stopRecognition();
+          }
+        };
+      } else {
+        output.textContent = "Ваш браузер не поддерживает Web Speech API.";
+        startBtn.disabled = true;
+      }
+
+      function stopRecognition() {
+        isRecognizing = false;
+        recognition.stop();
+        startBtn.style.display = "block";
+        stopBtn.style.display = "none";
+        restartAttempts = 0;
+        restartDelay = 3000; // Сбрасываем задержку
+        interimText = ""; // Очищаем промежуточный текст
+        console.log("Распознавание остановлено");
+      }
+
+      startBtn.addEventListener("click", () => {
+        if (recognition && !isRecognizing) {
+          if (navigator.onLine) {
+            isRecognizing = true;
+            restartAttempts = 0;
+            restartDelay = 3000;
+            try {
+              recognition.start();
+              output.textContent = accumulatedText || "Говорите, я слушаю...";
+              startBtn.style.display = "none";
+              stopBtn.style.display = "block";
+            } catch (e) {
+              console.error("Ошибка при старте:", e);
+              output.textContent = "Ошибка при запуске распознавания.";
+            }
+          } else {
+            output.textContent = "Отсутствует интернет-соединение.";
+          }
+        }
+      });
+
+      stopBtn.addEventListener("click", () => {
+        if (recognition && isRecognizing) {
+          stopRecognition();
+        }
+      });
+    </script>
+  </body>
+</html>
+
+<!--
+<script type="text/javascript">
+  var gk_isXlsx = false;
+  var gk_xlsxFileLookup = {};
+  var gk_fileData = {};
+  function loadFileData(filename) {
+    if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+      try {
+        var workbook = XLSX.read(gk_fileData[filename], { type: "base64" });
+        var firstSheetName = workbook.SheetNames[0];
+        var worksheet = workbook.Sheets[firstSheetName];
+
+        // Convert sheet to JSON to filter blank rows
+        var jsonData = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          blankrows: false,
+          defval: "",
+        });
+        // Filter out blank rows (rows where all cells are empty, null, or undefined)
+        var filteredData = jsonData.filter((row) =>
+          row.some((cell) => cell !== "" && cell !== null && cell !== undefined)
+        );
+
+        // Convert filtered JSON back to CSV
+        var csv = XLSX.utils.aoa_to_sheet(filteredData); // Create a new sheet from filtered array of arrays
+        csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+        return csv;
+      } catch (e) {
+        console.error(e);
+        return "";
+      }
+    }
+    return gk_fileData[filename] || "";
+  }
+</script>
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Распознавание русской речи</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #output {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 5px;
+        width: 80%;
+        max-width: 600px;
+        min-height: 100px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Распознавание русской речи</h1>
+    <button id="startBtn">Начать распознавание</button>
+    <div id="output">Результат будет здесь...</div>
+
+    <script>
+      const startBtn = document.getElementById("startBtn");
+      const output = document.getElementById("output");
+      let recognition;
+
+      // Проверяем поддержку Web Speech API
+      if (
+        "webkitSpeechRecognition" in window ||
+        "SpeechRecognition" in window
+      ) {
+        recognition = new (window.SpeechRecognition ||
+          window.webkitSpeechRecognition)();
+        recognition.lang = "ru-RU"; // Устанавливаем русский язык
+        recognition.interimResults = true; // Показывать промежуточные результаты
+        recognition.continuous = true; // Непрерывное распознавание
+
+        recognition.onresult = (event) => {
+          let transcript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+          }
+          output.textContent = transcript || "Говорите, я слушаю...";
+        };
+
+        recognition.onerror = (event) => {
+          output.textContent = "Ошибка распознавания: " + event.error;
+        };
+
+        recognition.onend = () => {
+          output.textContent =
+            "Распознавание завершено. Нажмите кнопку, чтобы начать снова.";
+        };
+      } else {
+        output.textContent = "Ваш браузер не поддерживает Web Speech API.";
+        startBtn.disabled = true;
+      }
+
+      startBtn.addEventListener("click", () => {
+        if (recognition) {
+          recognition.start();
+          output.textContent = "Говорите, я слушаю...";
+        }
+      });
+    </script>
+  </body>
+</html>
+-->
